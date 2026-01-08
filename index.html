@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valheim Food Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
+
+        :root {
+            --valheim-dark: #1a1a1a;
+            --valheim-gold: #d4af37;
+            --valheim-red: #8b0000;
+            --valheim-blue: #004b63;
+        }
+
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        h1, h2, h3, .valheim-font {
+            font-family: 'Cinzel', serif;
+        }
+
+        .card {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { 
+            background-color: #2a2a2a; 
+            color: var(--valheim-gold); 
+            text-align: left; 
+            padding: 12px; 
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        th:hover { background-color: #3a3a3a; }
+        td { padding: 12px; border-bottom: 1px solid #333; }
+        tr:hover { background-color: #252525; }
+
+        .stat-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        .hp { background-color: #4c0505; color: #ff9999; }
+        .stamina { background-color: #3e3e00; color: #ffff99; }
+        .eitr { background-color: #002b36; color: #99ffff; }
+
+        .sort-icon::after {
+            content: ' ↕';
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+        .sort-asc::after { content: ' ↑'; opacity: 1; }
+        .sort-desc::after { content: ' ↓'; opacity: 1; }
+
+        input[type="checkbox"] { accent-color: var(--valheim-gold); }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--valheim-gold); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h1 class="text-3xl md:text-4xl text-yellow-500 font-bold uppercase tracking-widest">Valheim Food Manager</h1>
+            <p class="text-gray-400 italic">"Skål! Prepare for your next boss fight."</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="switchTab('food')" id="btn-food" class="px-6 py-2 rounded bg-yellow-600 text-black font-bold hover:bg-yellow-500 transition">Food Menu</button>
+            <button onclick="switchTab('ingredients')" id="btn-ingredients" class="px-6 py-2 rounded bg-gray-700 text-white font-bold hover:bg-gray-600 transition">Ingredient Status</button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto">
+        
+        <!-- SECTION: FOOD LIST -->
+        <section id="tab-food">
+            <div class="card p-6 mb-6 flex flex-wrap gap-6 items-end">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Max Biome</label>
+                    <select id="filter-biome" onchange="renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500">
+                        <option value="1">1: Meadows</option>
+                        <option value="2">2: Black Forest</option>
+                        <option value="3">3: Swamp</option>
+                        <option value="4">4: Mountain</option>
+                        <option value="5" selected>5: Plains</option>
+                        <option value="6">6: Mistlands</option>
+                        <option value="7">7: Ashlands</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Ingredient Availability</label>
+                    <select id="filter-difficulty" onchange="renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500">
+                        <option value="all">Show All</option>
+                        <option value="easy">Only "Easy to find"</option>
+                        <option value="okay">Up to "Okay"</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-4 h-10">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="filter-boss" onchange="renderFood()" class="w-5 h-5">
+                        <span>Only High-Rated (Boss Prep)</span>
+                    </label>
+                </div>
+                <div class="flex-grow"></div>
+                <div class="text-sm text-gray-500">
+                    Found: <span id="count-display" class="text-yellow-500 font-bold">0</span> Items
+                </div>
+            </div>
+
+            <div class="card overflow-x-auto">
+                <table id="food-table">
+                    <thead>
+                        <tr>
+                            <th onclick="setSort('name')" id="th-name" class="sort-icon">Food</th>
+                            <th onclick="setSort('hp')" id="th-hp" class="sort-icon">HP</th>
+                            <th onclick="setSort('stamina')" id="th-stamina" class="sort-icon">Stamina</th>
+                            <th onclick="setSort('eitr')" id="th-eitr" class="sort-icon">Eitr</th>
+                            <th onclick="setSort('total')" id="th-total" class="sort-icon">Total</th>
+                            <th onclick="setSort('biome')" id="th-biome" class="sort-icon">Biome</th>
+                            <th>Ingredients Check</th>
+                        </tr>
+                    </thead>
+                    <tbody id="food-body">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION: INGREDIENTS SETTINGS -->
+        <section id="tab-ingredients" class="hidden">
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl text-yellow-500">Raw Material Management</h2>
+                    <div class="text-xs text-gray-500">Status is automatically saved locally</div>
+                </div>
+                <p class="text-gray-400 mb-6 italic">Rate only raw materials here. Complex dishes (like Sausages) calculate their status automatically based on these ingredients.</p>
+                <div id="ingredients-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="recipe-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center p-4 z-50" onclick="handleBackdropClick(event)">
+        <div class="card max-w-lg w-full p-6 relative" onclick="event.stopPropagation()">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            <h3 id="modal-title" class="text-2xl text-yellow-500 mb-2 uppercase tracking-wide">Recipe</h3>
+            <p id="modal-sub" class="text-xs text-gray-500 mb-4 italic">Recursive resolution of all raw materials:</p>
+            <ul id="modal-ingredients" class="space-y-2"></ul>
+        </div>
+    </div>
+
+    <script>
+        let foodData = [];
+        let ingredientsStatus = {};
+        let currentSort = { col: 'total', dir: 'desc' };
+
+        async function initApp() {
+            foodData = [
+                // Biome 1: Meadows
+                { name: "Raspberries", hp: 7, stamina: 20, eitr: 0, total: 27, biome: 1, ingredients: [] },
+                { name: "Mushroom", hp: 15, stamina: 15, eitr: 0, total: 30, biome: 1, ingredients: [] },
+                { name: "Grilled neck tail", hp: 25, stamina: 8, eitr: 0, total: 33, biome: 1, ingredients: ["Neck tail"] },
+                { name: "Cooked boar meat", hp: 30, stamina: 10, eitr: 0, total: 40, biome: 1, ingredients: ["Boar meat"] },
+                { name: "Honey", hp: 8, stamina: 35, eitr: 0, total: 43, biome: 1, ingredients: [] },
+                { name: "Cooked deer meat", hp: 35, stamina: 12, eitr: 0, total: 47, biome: 1, ingredients: ["Deer meat"] },
+                
+                // Biome 2: Black Forest
+                { name: "Blueberries", hp: 8, stamina: 25, eitr: 0, total: 33, biome: 2, ingredients: [] },
+                { name: "Yellow mushroom", hp: 10, stamina: 30, eitr: 0, total: 40, biome: 2, ingredients: [] },
+                { name: "Carrot", hp: 10, stamina: 32, eitr: 0, total: 42, biome: 2, ingredients: ["Carrot seeds"] },
+                { name: "Boar jerky", hp: 23, stamina: 23, eitr: 0, total: 46, biome: 2, ingredients: ["Boar meat", "Honey"] },
+                { name: "Minced meat sauce", hp: 40, stamina: 13, eitr: 0, total: 53, biome: 2, ingredients: ["Boar meat", "Neck tail", "Carrot"] },
+                { name: "Queen's jam", hp: 14, stamina: 40, eitr: 0, total: 54, biome: 2, ingredients: ["Raspberries", "Blueberries"] },
+                { name: "Carrot soup", hp: 15, stamina: 45, eitr: 0, total: 60, biome: 2, ingredients: ["Mushroom", "Carrot"] },
+                { name: "Deer stew", hp: 45, stamina: 15, eitr: 0, total: 60, biome: 2, ingredients: ["Blueberries", "Carrot", "Deer meat"] },
+                
+                // Biome 3: Swamp
+                { name: "Cooked fish", hp: 45, stamina: 15, eitr: 0, total: 60, biome: 3, ingredients: ["Raw fish"] },
+                { name: "Muckshake", hp: 16, stamina: 50, eitr: 0, total: 66, biome: 3, ingredients: ["Ooze", "Raspberries", "Blueberries"] },
+                { name: "Turnip stew", hp: 18, stamina: 55, eitr: 0, total: 73, biome: 3, ingredients: ["Boar meat", "Turnip"] },
+                { name: "Sausages", hp: 55, stamina: 18, eitr: 0, total: 73, biome: 3, ingredients: ["Entrails", "Boar meat", "Thistle"] },
+                { name: "Black soup", hp: 50, stamina: 17, eitr: 0, total: 67, biome: 3, ingredients: ["Bloodbag", "Honey", "Turnip"] },
+                { name: "Cooked serpent meat", hp: 70, stamina: 23, eitr: 0, total: 93, biome: 3, ingredients: ["Serpent meat"] },
+                { name: "Serpent stew", hp: 80, stamina: 26, eitr: 0, total: 106, biome: 3, ingredients: ["Mushroom", "Cooked serpent meat", "Honey"] },
+                { name: "Sailor's bounty", hp: 45, stamina: 45, eitr: 0, total: 90, biome: 3, ingredients: ["Cooked fish", "Thistle", "Cooked serpent meat", "Seafarer's herbs"] },
+                { name: "Swamp dweller's delight", hp: 35, stamina: 35, eitr: 0, total: 70, biome: 3, ingredients: ["Sausages", "Bloodbag", "Turnip stew", "Woodland herb blend"] },
+                { name: "Black Forest buffet platter", hp: 35, stamina: 35, eitr: 0, total: 70, biome: 3, ingredients: ["Deer stew", "Thistle", "Queen's jam", "Woodland herb blend"] },
+                { name: "Whole roasted Meadow boar", hp: 35, stamina: 35, eitr: 0, total: 70, biome: 3, ingredients: ["Cooked deer meat", "Cooked boar meat", "Dandelion", "Woodland herb blend"] },
+                
+                // Biome 4: Mountain
+                { name: "Onion", hp: 13, stamina: 40, eitr: 0, total: 53, biome: 4, ingredients: ["Onion seeds"] },
+                { name: "Onion soup", hp: 20, stamina: 60, eitr: 0, total: 80, biome: 4, ingredients: ["Onion"] },
+                { name: "Wolf jerky", hp: 33, stamina: 33, eitr: 0, total: 66, biome: 4, ingredients: ["Wolf meat", "Honey"] },
+                { name: "Wolf skewer", hp: 65, stamina: 21, eitr: 0, total: 86, biome: 4, ingredients: ["Wolf meat", "Mushroom", "Onion"] },
+                { name: "Eyescream", hp: 21, stamina: 65, eitr: 0, total: 86, biome: 4, ingredients: ["Greydwarf eye", "Freeze gland"] },
+                { name: "Hearty Mountain logger's stew", hp: 45, stamina: 45, eitr: 0, total: 90, biome: 4, ingredients: ["Wolf skewer", "Onion soup", "Carrot", "Mountain peak pepper powder"] },
+                
+                // Biome 5: Plains
+                { name: "Cloudberries", hp: 13, stamina: 40, eitr: 0, total: 53, biome: 5, ingredients: [] },
+                { name: "Cooked lox meat", hp: 50, stamina: 16, eitr: 0, total: 66, biome: 5, ingredients: ["Lox meat"] },
+                { name: "Fish wraps", hp: 70, stamina: 23, eitr: 0, total: 93, biome: 5, ingredients: ["Cooked fish", "Barley flour"] },
+                { name: "Lox meat pie", hp: 75, stamina: 24, eitr: 0, total: 99, biome: 5, ingredients: ["Barley flour", "Cloudberries", "Lox meat"] },
+                { name: "Blood pudding", hp: 25, stamina: 75, eitr: 0, total: 100, biome: 5, ingredients: ["Thistle", "Bloodbag", "Barley flour"] },
+                { name: "Bread", hp: 23, stamina: 70, eitr: 0, total: 93, biome: 5, ingredients: ["Barley flour"] },
+                { name: "Plains pie picnic", hp: 55, stamina: 55, eitr: 0, total: 110, biome: 5, ingredients: ["Bread", "Lox meat pie", "Cloudberries", "Grasslands herbalist harvest"] },
+
+                // Biome 6: Mistlands
+                { name: "Misthare supreme", hp: 85, stamina: 28, eitr: 0, total: 113, biome: 6, ingredients: ["Hare meat", "Jotun puffs", "Carrot"] },
+                { name: "Salad", hp: 26, stamina: 80, eitr: 0, total: 106, biome: 6, ingredients: ["Jotun puffs", "Onion", "Cloudberries"] },
+                { name: "Seeker aspic", hp: 28, stamina: 14, eitr: 85, total: 127, biome: 6, ingredients: ["Seeker meat", "Magecap", "Royal jelly"] },
+                { name: "Mushrooms galore á la Mistlands", hp: 65, stamina: 65, eitr: 33, total: 163, biome: 6, ingredients: ["Misthare supreme", "Cooked seeker meat", "Yggdrasil porridge", "Herbs of the hidden hills"] },
+                
+                // Biome 7: Ashlands
+                { name: "Piquant pie", hp: 105, stamina: 35, eitr: 0, total: 140, biome: 7, ingredients: ["Asksvin tail", "Vineberry cluster", "Barley flour"] },
+                { name: "Ashlands gourmet bowl", hp: 75, stamina: 75, eitr: 38, total: 188, biome: 7, ingredients: ["Cooked asksvin tail", "Vineberry cluster", "Scorching medley", "Fiery spice powder"] }
+            ];
+
+            loadIngredientStatus();
+            extractRawIngredients();
+            renderIngredients();
+            renderFood();
+            updateSortIcons();
+
+            // Close modal on ESC
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeModal();
+            });
+        }
+
+        function getFlattenedIngredients(foodName) {
+            const food = foodData.find(f => f.name === foodName);
+            if (!food || food.ingredients.length === 0) return [foodName];
+            
+            let flattened = [];
+            food.ingredients.forEach(ing => {
+                const subFood = foodData.find(f => f.name === ing);
+                if (subFood) {
+                    flattened = flattened.concat(getFlattenedIngredients(ing));
+                } else {
+                    flattened.push(ing);
+                }
+            });
+            return [...new Set(flattened)];
+        }
+
+        function extractRawIngredients() {
+            const rawOnes = new Set();
+            foodData.forEach(f => {
+                const flattened = getFlattenedIngredients(f.name);
+                if (f.ingredients.length === 0) {
+                    rawOnes.add(f.name);
+                }
+                f.ingredients.forEach(ing => {
+                    if (!foodData.find(food => food.name === ing)) {
+                        rawOnes.add(ing);
+                    }
+                });
+            });
+
+            rawOnes.forEach(raw => {
+                if (!ingredientsStatus[raw]) ingredientsStatus[raw] = "okay";
+            });
+        }
+
+        function getEffectiveDifficulty(foodName) {
+            const rawIngredients = getFlattenedIngredients(foodName);
+            if (rawIngredients.length === 1 && rawIngredients[0] === foodName && !foodData.find(f => f.name === foodName).ingredients.length) {
+                 return ingredientsStatus[foodName] || "okay";
+            }
+
+            const statuses = rawIngredients.map(ing => ingredientsStatus[ing] || "okay");
+            if (statuses.includes("hard")) return "hard";
+            if (statuses.includes("okay")) return "okay";
+            return "easy";
+        }
+
+        function setSort(col) {
+            if (currentSort.col === col) {
+                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.col = col;
+                currentSort.dir = 'desc';
+            }
+            updateSortIcons();
+            renderFood();
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+            const activeTh = document.getElementById(`th-${currentSort.col}`);
+            if (activeTh) activeTh.classList.add(`sort-${currentSort.dir}`);
+        }
+
+        function renderFood() {
+            const body = document.getElementById('food-body');
+            const maxBiome = parseInt(document.getElementById('filter-biome').value);
+            const difficultyFilter = document.getElementById('filter-difficulty').value;
+            const bossOnly = document.getElementById('filter-boss').checked;
+            
+            let filtered = foodData.filter(food => {
+                if (food.biome > maxBiome) return false;
+                
+                const effDiff = getEffectiveDifficulty(food.name);
+                if (difficultyFilter === "easy" && effDiff !== "easy") return false;
+                if (difficultyFilter === "okay" && effDiff === "hard") return false;
+                
+                const isHigh = food.total >= 70 || food.hp >= 60 || food.stamina >= 60;
+                if (bossOnly && !isHigh) return false;
+                
+                return true;
+            });
+
+            filtered.sort((a, b) => {
+                let valA = a[currentSort.col];
+                let valB = b[currentSort.col];
+                if (typeof valA === 'string') {
+                    return currentSort.dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return currentSort.dir === 'asc' ? valA - valB : valB - valA;
+            });
+
+            body.innerHTML = "";
+            filtered.forEach(food => {
+                let nameColor = "#ffffff";
+                if (food.hp > food.stamina) nameColor = "#fca5a5"; 
+                else if (food.stamina > food.hp) nameColor = "#fef08a";
+
+                const effDiff = getEffectiveDifficulty(food.name);
+                const diffClass = effDiff === 'easy' ? 'text-green-400' : (effDiff === 'okay' ? 'text-yellow-400' : 'text-red-500');
+
+                // Escape single quotes in food name for JS function call
+                const safeName = food.name.replace(/'/g, "\\'");
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="color: ${nameColor}; font-weight: bold;">${food.name}</td>
+                    <td><span class="stat-badge hp">${food.hp}</span></td>
+                    <td><span class="stat-badge stamina">${food.stamina}</span></td>
+                    <td>${food.eitr > 0 ? `<span class="stat-badge eitr">${food.eitr}</span>` : '-'}</td>
+                    <td class="text-white font-bold">${food.total}</td>
+                    <td class="text-xs text-gray-500">${getBiomeName(food.biome)}</td>
+                    <td class="text-sm cursor-help underline decoration-dotted ${diffClass}" onclick="showRecipe('${safeName}')">
+                        ${effDiff.toUpperCase()}
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+            document.getElementById('count-display').innerText = filtered.length;
+        }
+
+        function getBiomeName(id) {
+            return ["", "Meadows", "Black Forest", "Swamp", "Mountain", "Plains", "Mistlands", "Ashlands"][id] || "Unknown";
+        }
+
+        function showRecipe(foodName) {
+            const food = foodData.find(f => f.name === foodName);
+            if (!food) return;
+
+            document.getElementById('modal-title').innerText = food.name;
+            const list = document.getElementById('modal-ingredients');
+            
+            const rawOnes = getFlattenedIngredients(foodName);
+            
+            list.innerHTML = "";
+            if (rawOnes.length === 1 && rawOnes[0] === foodName && food.ingredients.length === 0) {
+                list.innerHTML = `<li class="text-gray-400 italic">Basic raw material (directly gatherable)</li>`;
+            } else {
+                rawOnes.forEach(raw => {
+                    const s = ingredientsStatus[raw] || "okay";
+                    const c = s === 'easy' ? 'text-green-400' : (s === 'okay' ? 'text-yellow-400' : 'text-red-500');
+                    list.innerHTML += `<li class="flex justify-between border-b border-gray-700 py-1">
+                        <span>${raw}</span>
+                        <span class="${c}">${s.toUpperCase()}</span>
+                    </li>`;
+                });
+            }
+            document.getElementById('recipe-modal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('recipe-modal').classList.add('hidden'); }
+        function handleBackdropClick(e) { if (e.target.id === 'recipe-modal') closeModal(); }
+        
+        function saveIngredientStatus() { 
+            localStorage.setItem('valheim_ing_status_v2', JSON.stringify(ingredientsStatus)); 
+        }
+        
+        function loadIngredientStatus() {
+            const saved = localStorage.getItem('valheim_ing_status_v2');
+            if (saved) ingredientsStatus = JSON.parse(saved);
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tab-food').classList.toggle('hidden', tab !== 'food');
+            document.getElementById('tab-ingredients').classList.toggle('hidden', tab !== 'ingredients');
+            
+            const btnFood = document.getElementById('btn-food');
+            const btnIng = document.getElementById('btn-ingredients');
+            
+            if (tab === 'food') {
+                btnFood.className = "px-6 py-2 rounded bg-yellow-600 text-black font-bold transition";
+                btnIng.className = "px-6 py-2 rounded bg-gray-700 text-white font-bold hover:bg-gray-600 transition";
+            } else {
+                btnIng.className = "px-6 py-2 rounded bg-yellow-600 text-black font-bold transition";
+                btnFood.className = "px-6 py-2 rounded bg-gray-700 text-white font-bold hover:bg-gray-600 transition";
+            }
+        }
+
+        function renderIngredients() {
+            const container = document.getElementById('ingredients-list');
+            container.innerHTML = "";
+            
+            const sortedKeys = Object.keys(ingredientsStatus).sort();
+            
+            sortedKeys.forEach(ing => {
+                const s = ingredientsStatus[ing];
+                const div = document.createElement('div');
+                div.className = "card p-4 flex flex-col gap-2";
+                div.innerHTML = `<span class="font-bold text-gray-200">${ing}</span>
+                    <div class="flex gap-2 mt-1">
+                        <button onclick="setIngredientStatus('${ing}', 'easy')" class="flex-1 text-xs py-1 rounded transition ${s === 'easy' ? 'bg-green-600 text-white font-bold' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}">Easy</button>
+                        <button onclick="setIngredientStatus('${ing}', 'okay')" class="flex-1 text-xs py-1 rounded transition ${s === 'okay' ? 'bg-yellow-600 text-white font-bold' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}">Okay</button>
+                        <button onclick="setIngredientStatus('${ing}', 'hard')" class="flex-1 text-xs py-1 rounded transition ${s === 'hard' ? 'bg-red-900 text-white font-bold' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}">Hard</button>
+                    </div>`;
+                container.appendChild(div);
+            });
+        }
+
+        function setIngredientStatus(ing, status) {
+            ingredientsStatus[ing] = status;
+            saveIngredientStatus();
+            renderIngredients();
+            renderFood();
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
