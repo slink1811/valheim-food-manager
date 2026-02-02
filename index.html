@@ -92,19 +92,19 @@
             <div class="card p-6 mb-6 flex flex-wrap gap-6 items-end">
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Max Biome</label>
-                    <select id="filter-biome" onchange="renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500">
+                    <select id="filter-biome" onchange="saveFilters(); renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500">
                         <option value="1">1: Meadows</option>
                         <option value="2">2: Black Forest</option>
                         <option value="3">3: Swamp</option>
                         <option value="4">4: Mountain</option>
-                        <option value="5" selected>5: Plains</option>
+                        <option value="5">5: Plains</option>
                         <option value="6">6: Mistlands</option>
                         <option value="7">7: Ashlands</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Availability</label>
-                    <select id="filter-difficulty" onchange="renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500">
+                    <select id="filter-difficulty" onchange="saveFilters(); renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500">
                         <option value="all">Show All</option>
                         <option value="easy">Only "Easy"</option>
                         <option value="okay">Up to "Okay"</option>
@@ -112,14 +112,14 @@
                 </div>
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Filter by Ingredient</label>
-                    <select id="filter-ingredient" onchange="renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500 min-w-[150px]">
+                    <select id="filter-ingredient" onchange="saveFilters(); renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500 min-w-[150px]">
                         <option value="all">All Ingredients</option>
                         <!-- Filled dynamically -->
                     </select>
                 </div>
                 <div class="flex items-center gap-4 h-10">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="filter-boss" onchange="renderFood()" class="w-5 h-5">
+                        <input type="checkbox" id="filter-boss" onchange="saveFilters(); renderFood()" class="w-5 h-5">
                         <span>Boss Prep</span>
                     </label>
                 </div>
@@ -242,6 +242,7 @@
             loadIngredientStatus();
             extractRawIngredients();
             populateIngredientFilter();
+            loadFilters(); // Load biome and other filters from storage
             renderIngredients();
             renderFood();
             updateSortIcons();
@@ -429,6 +430,27 @@
         function closeModal() { document.getElementById('recipe-modal').classList.add('hidden'); }
         function handleBackdropClick(e) { if (e.target.id === 'recipe-modal') closeModal(); }
         
+        function saveFilters() {
+            const filters = {
+                biome: document.getElementById('filter-biome').value,
+                difficulty: document.getElementById('filter-difficulty').value,
+                ingredient: document.getElementById('filter-ingredient').value,
+                boss: document.getElementById('filter-boss').checked
+            };
+            localStorage.setItem('valheim_food_filters', JSON.stringify(filters));
+        }
+
+        function loadFilters() {
+            const saved = localStorage.getItem('valheim_food_filters');
+            if (saved) {
+                const filters = JSON.parse(saved);
+                document.getElementById('filter-biome').value = filters.biome || "5";
+                document.getElementById('filter-difficulty').value = filters.difficulty || "all";
+                document.getElementById('filter-ingredient').value = filters.ingredient || "all";
+                document.getElementById('filter-boss').checked = filters.boss || false;
+            }
+        }
+
         function saveIngredientStatus() { 
             localStorage.setItem('valheim_ing_status_v2', JSON.stringify(ingredientsStatus)); 
         }
