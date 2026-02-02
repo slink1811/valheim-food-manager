@@ -103,17 +103,24 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-400 mb-1">Ingredient Availability</label>
+                    <label class="block text-sm text-gray-400 mb-1">Availability</label>
                     <select id="filter-difficulty" onchange="renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500">
                         <option value="all">Show All</option>
-                        <option value="easy">Only "Easy to find"</option>
+                        <option value="easy">Only "Easy"</option>
                         <option value="okay">Up to "Okay"</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Filter by Ingredient</label>
+                    <select id="filter-ingredient" onchange="renderFood()" class="bg-gray-800 border border-gray-600 rounded p-2 outline-none focus:border-yellow-500 min-w-[150px]">
+                        <option value="all">All Ingredients</option>
+                        <!-- Filled dynamically -->
                     </select>
                 </div>
                 <div class="flex items-center gap-4 h-10">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" id="filter-boss" onchange="renderFood()" class="w-5 h-5">
-                        <span>Only High-Rated (Boss Prep)</span>
+                        <span>Boss Prep</span>
                     </label>
                 </div>
                 <div class="flex-grow"></div>
@@ -132,7 +139,7 @@
                             <th onclick="setSort('eitr')" id="th-eitr" class="sort-icon">Eitr</th>
                             <th onclick="setSort('total')" id="th-total" class="sort-icon">Total</th>
                             <th onclick="setSort('biome')" id="th-biome" class="sort-icon">Biome</th>
-                            <th>Ingredients Check</th>
+                            <th>Availability</th>
                         </tr>
                     </thead>
                     <tbody id="food-body">
@@ -147,9 +154,9 @@
             <div class="card p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl text-yellow-500">Raw Material Management</h2>
-                    <div class="text-xs text-gray-500">Status is automatically saved locally</div>
+                    <div class="text-xs text-gray-500">Auto-saved locally</div>
                 </div>
-                <p class="text-gray-400 mb-6 italic">Rate only raw materials here. Complex dishes (like Sausages) calculate their status automatically based on these ingredients.</p>
+                <p class="text-gray-400 mb-6 italic">Rate only raw materials here. Complex dishes calculate their status automatically.</p>
                 <div id="ingredients-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
         </section>
@@ -159,7 +166,7 @@
         <div class="card max-w-lg w-full p-6 relative" onclick="event.stopPropagation()">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
             <h3 id="modal-title" class="text-2xl text-yellow-500 mb-2 uppercase tracking-wide">Recipe</h3>
-            <p id="modal-sub" class="text-xs text-gray-500 mb-4 italic">Recursive resolution of all raw materials:</p>
+            <p id="modal-sub" class="text-xs text-gray-500 mb-4 italic">Full resource breakdown:</p>
             <ul id="modal-ingredients" class="space-y-2"></ul>
         </div>
     </div>
@@ -203,6 +210,7 @@
                 { name: "Whole roasted Meadow boar", hp: 35, stamina: 35, eitr: 0, total: 70, biome: 3, ingredients: ["Cooked deer meat", "Cooked boar meat", "Dandelion", "Woodland herb blend"] },
                 
                 // Biome 4: Mountain
+                { name: "Onion seeds", hp: 0, stamina: 0, eitr: 0, total: 0, biome: 4, ingredients: [], hidden: true },
                 { name: "Onion", hp: 13, stamina: 40, eitr: 0, total: 53, biome: 4, ingredients: ["Onion seeds"] },
                 { name: "Onion soup", hp: 20, stamina: 60, eitr: 0, total: 80, biome: 4, ingredients: ["Onion"] },
                 { name: "Wolf jerky", hp: 33, stamina: 33, eitr: 0, total: 66, biome: 4, ingredients: ["Wolf meat", "Honey"] },
@@ -226,12 +234,14 @@
                 { name: "Mushrooms galore á la Mistlands", hp: 65, stamina: 65, eitr: 33, total: 163, biome: 6, ingredients: ["Misthare supreme", "Cooked seeker meat", "Yggdrasil porridge", "Herbs of the hidden hills"] },
                 
                 // Biome 7: Ashlands
+                { name: "Scorching medley", hp: 32, stamina: 95, eitr: 0, total: 127, biome: 7, ingredients: ["Jotun puffs", "Onion", "Fiddlehead"] },
                 { name: "Piquant pie", hp: 105, stamina: 35, eitr: 0, total: 140, biome: 7, ingredients: ["Asksvin tail", "Vineberry cluster", "Barley flour"] },
                 { name: "Ashlands gourmet bowl", hp: 75, stamina: 75, eitr: 38, total: 188, biome: 7, ingredients: ["Cooked asksvin tail", "Vineberry cluster", "Scorching medley", "Fiery spice powder"] }
             ];
 
             loadIngredientStatus();
             extractRawIngredients();
+            populateIngredientFilter();
             renderIngredients();
             renderFood();
             updateSortIcons();
@@ -277,9 +287,25 @@
             });
         }
 
+        function populateIngredientFilter() {
+            const select = document.getElementById('filter-ingredient');
+            // Reset but keep first option
+            select.innerHTML = '<option value="all">All Ingredients</option>';
+            
+            const sortedIngredients = Object.keys(ingredientsStatus).sort();
+            
+            sortedIngredients.forEach(ing => {
+                const option = document.createElement('option');
+                option.value = ing;
+                option.textContent = ing;
+                select.appendChild(option);
+            });
+        }
+
         function getEffectiveDifficulty(foodName) {
             const rawIngredients = getFlattenedIngredients(foodName);
-            if (rawIngredients.length === 1 && rawIngredients[0] === foodName && !foodData.find(f => f.name === foodName).ingredients.length) {
+            const food = foodData.find(f => f.name === foodName);
+            if (rawIngredients.length === 1 && rawIngredients[0] === foodName && food && !food.ingredients.length) {
                  return ingredientsStatus[foodName] || "okay";
             }
 
@@ -312,15 +338,22 @@
             const body = document.getElementById('food-body');
             const maxBiome = parseInt(document.getElementById('filter-biome').value);
             const difficultyFilter = document.getElementById('filter-difficulty').value;
+            const ingredientFilter = document.getElementById('filter-ingredient').value;
             const bossOnly = document.getElementById('filter-boss').checked;
             
             let filtered = foodData.filter(food => {
+                if (food.hidden) return false;
                 if (food.biome > maxBiome) return false;
                 
                 const effDiff = getEffectiveDifficulty(food.name);
                 if (difficultyFilter === "easy" && effDiff !== "easy") return false;
                 if (difficultyFilter === "okay" && effDiff === "hard") return false;
                 
+                if (ingredientFilter !== "all") {
+                    const rawMaterials = getFlattenedIngredients(food.name);
+                    if (!rawMaterials.includes(ingredientFilter)) return false;
+                }
+
                 const isHigh = food.total >= 70 || food.hp >= 60 || food.stamina >= 60;
                 if (bossOnly && !isHigh) return false;
                 
@@ -345,7 +378,6 @@
                 const effDiff = getEffectiveDifficulty(food.name);
                 const diffClass = effDiff === 'easy' ? 'text-green-400' : (effDiff === 'okay' ? 'text-yellow-400' : 'text-red-500');
 
-                // Escape single quotes in food name for JS function call
                 const safeName = food.name.replace(/'/g, "\\'");
 
                 const tr = document.createElement('tr');
